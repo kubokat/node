@@ -1,2 +1,2 @@
 # node
-Email transport login in config.js
+Email transport password in config.js
