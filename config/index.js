@@ -4,7 +4,7 @@ module.exports = {
     service: 'gmail',
     auth: {
         user: 'kubokat@gmail.com',
-        pass: 'prometeus1282'
+        pass: 'secret'
     }
   },
   session: {
