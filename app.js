@@ -1,48 +1,66 @@
-var express = require('express');
-var path = require('path');
-var favicon = require('serve-favicon');
-var logger = require('morgan');
-var session = require('express-session');
-var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
+const Koa = require('koa');
+const Router = require('koa-router');
+const session = require('koa-session');
+const CookieParser = require('koa-cookie-parser');
+//const formidable = require('koa2-formidable');
 
-var app = express();
+const app = new Koa();
+const router = new Router();
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
+const views = require('koa-views');
+const json = require('koa-json');
+const onerror = require('koa-onerror');
+const bodyparser = require('koa-bodyparser');
+const logger = require('koa-logger');
+const debug = require('debug')('koa2:server');
+const path = require('path');
 
-// uncomment after placing your favicon in /public
-//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
-app.use(logger('dev'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(session({
-  secret: 'test',
-  resave: true,
-  saveUninitialized: true
-}));
-app.use(express.static(path.join(__dirname, 'public')));
+const config = require('./config');
+const routes = require('./routes');
 
-app.use('/', require('./routes/index'));
-
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  var err = new Error('Not Found');
-  err.status = 404;
-  next(err);
-});
+const port = process.env.PORT || config.port
 
 // error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+onerror(app);
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
+// middlewares
 
-module.exports = app;
+app.keys = ['some secret hurr'];
+
+app.use(session(config.session, app));
+
+app.use(async (ctx, next) => {
+  ctx.config = config;
+  await next()
+})
+
+app.use(bodyparser())
+  .use(json())
+  .use(logger())
+  .use(require('koa-static')(__dirname + '/public'))
+  .use(views(path.join(__dirname, '/views'), {
+    options: {settings: {views: path.join(__dirname, 'views')}},
+    map: {'pug': 'pug'},
+    extension: 'pug'
+  }))
+  //.use (formidable ())
+  .use(router.routes())
+  .use(router.allowedMethods())
+
+// logger
+app.use(async (ctx, next) => {
+  const start = new Date()
+  await next()
+  const ms = new Date() - start
+  console.log(`${ctx.method} ${ctx.url} - $ms`)
+})
+
+routes(router)
+app.on('error', function(err, ctx) {
+  console.log(err)
+  logger.error('server error', err, ctx)
+})
+
+module.exports = app.listen(config.port, () => {
+  console.log(`Listening on http://localhost:${config.port}`)
+})

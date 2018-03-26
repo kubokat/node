@@ -2,37 +2,37 @@ const low = require('lowdb');
 const FileAsync = require('lowdb/adapters/FileAsync');
 const crypto = require('crypto');
 
-module.exports.getLogin = function (req, res) {
-    res.render('pages/login', { title: 'Main' });
+module.exports.getLogin =  async function (ctx, next) {
+    await ctx.render('pages/login', { title: 'Main' });
 };
 
-module.exports.checkUser = function (req, res) {
+module.exports.checkUser = async function (ctx, next) {
 
     try {
-        if(req.body.email === undefined) {
+        if(ctx.request.body.email == '') {
             throw 'email is empty'; 
         }
 
-        if(req.body.password === undefined) {
+        if(ctx.request.body.password == '') {
             throw 'password is empty'; 
         }
     }
     catch(e) {
-        res.render('error', { error: error });
+        await ctx.render('error', { message: e });
     }
 
     const adapter = new FileAsync('models/db.json');
 
-    low(adapter)
+    await low(adapter)
         .then(db => {
-            return db.get('users').find({ email: req.body.email, pass: crypto.createHash('md5').update(req.body.password).digest("hex") }).value();
-        }).then(user => {
+            return db.get('users').find({ email: ctx.request.body.email, pass: crypto.createHash('md5').update(ctx.request.body.password).digest("hex") }).value();
+        }).then(async user => {
             if (user === undefined) {
-                req.session.isAdmin = false;
-                res.redirect('/login');
+                ctx.session.isAdmin = false;
+                ctx.redirect('/login');
             } else {
-                req.session.isAdmin = true;
-                res.redirect('/admin'); 
+                ctx.session.isAdmin = true;
+                ctx.redirect('/admin'); 
             }
         });
 
